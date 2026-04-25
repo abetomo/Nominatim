@@ -116,7 +116,8 @@ class SearchTables:
             sa.Column('name_vector', IntArray, nullable=False),
             sa.Column('nameaddress_vector', IntArray, nullable=False),
             sa.Column('country_code', sa.String(2)),
-            sa.Column('centroid', Geometry, nullable=False))
+            sa.Column('centroid', Geometry, nullable=False),
+            sa.Column('all_names', sa.Text))
 
         self.tiger = sa.Table(
             'location_property_tiger', meta,
