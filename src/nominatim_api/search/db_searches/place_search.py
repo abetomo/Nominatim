@@ -46,6 +46,7 @@ class PlaceSearch(base.AbstractSearch):
         self.rankings = sdata.rankings
         self.expected_count = expected_count
         self.has_address_terms = has_address_terms
+        self.query_text = ''
 
     def _inner_search_name_cte(self, conn: SearchConnection,
                                details: SearchDetails) -> 'sa.CTE':
@@ -60,8 +61,15 @@ class PlaceSearch(base.AbstractSearch):
 
         sql = sa.select(t.c.place_id, t.c.importance)
 
-        for lookup in self.lookups:
-            sql = sql.where(lookup.sql_condition(t))
+        lookup_conditions = [lookup.sql_condition(t) for lookup in self.lookups]
+        if self.query_text:
+            name_match_condition = t.c.all_names.op('&@')(self.query_text)
+            if lookup_conditions:
+                sql = sql.where(sa.or_(sa.and_(*lookup_conditions), name_match_condition))
+            else:
+                sql = sql.where(name_match_condition)
+        elif lookup_conditions:
+            sql = sql.where(sa.and_(*lookup_conditions))
 
         if self.countries:
             sql = sql.where(t.c.country_code.in_(self.countries.values))\
