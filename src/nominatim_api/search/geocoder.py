@@ -9,6 +9,7 @@ Public interface to the search code.
 """
 from typing import List, Any, Optional, Iterator, Tuple, Dict
 import itertools
+import os
 import re
 import difflib
 
@@ -22,6 +23,7 @@ from ..logging import log
 from .token_assignment import yield_token_assignments
 from .db_search_builder import SearchBuilder, build_poi_search, wrap_near_search
 from .db_searches import AbstractSearch
+from .db_searches.place_search import PlaceSearch
 from .query_analyzer_factory import make_query_analyzer, AbstractQueryAnalyzer
 from .query import Phrase, QueryStruct
 
@@ -261,6 +263,13 @@ class ForwardGeocoder:
         await self._resolve_excluded_osm_ids()
 
         query, searches = await self.build_searches(phrases)
+
+        if os.environ.get('NOMINATIM_PGROONGA', 'off') == 'on':
+            query_text = ' '.join(p.text for p in phrases).strip()
+            if query_text:
+                for search in searches:
+                    if isinstance(search, PlaceSearch):
+                        search.query_text = query_text
 
         if searches:
             # Execute SQL until an appropriate result is found.
