@@ -65,7 +65,7 @@ def default_reverse_place_diameter(element: IntersectsReverseDistance,
            f" AND {table}.name is not null"\
            f" AND {table}.linked_place_id is null"\
            f" AND {table}.osm_type = 'N'" + \
-           " AND ST_Buffer(%s, reverse_place_diameter(%s)) && %s)" \
+           " AND ST_Expand(%s, reverse_place_diameter(%s)) && %s)" \
         % tuple(map(lambda c: compiler.process(c, **kw), element.clauses))
 
 
