@@ -100,6 +100,18 @@ PENALTY_BREAK = {
      BREAK_TOKEN: 0.4
 }
 
+PENALTY_CJ_CHAR = 0.1
+
+
+def _is_cj_char(char: str) -> bool:
+    code = ord(char)
+    return (0x3005 <= code <= 0x3007      # 々, 〆, 〇
+            or 0x3040 <= code <= 0x30FF   # Hiragana, Katakana
+            or 0x3400 <= code <= 0x4DBF   # CJK Unified Ideographs Extension A
+            or 0x4E00 <= code <= 0x9FFF   # CJK Unified Ideographs
+            or 0xF900 <= code <= 0xFAFF   # CJK Compatibility Ideographs
+            or 0x20000 <= code <= 0x3134F)  # CJK Unified Ideographs Extension B-G
+
 
 def _phrase_compatible_with(ptype: PhraseType, ttype: TokenType,
                             is_full_phrase: bool) -> bool:
@@ -425,6 +437,24 @@ class QueryStruct:
         return self.nodes[trange.start].partial.penalty + \
             sum(n.partial.penalty + n.word_break_penalty
                 for n in self.nodes[trange.start + 1:trange.end])
+
+    def is_cj_continuation(self, pos: int) -> bool:
+        node = self.nodes[pos]
+        prev_word = self.nodes[pos - 1].partial.lookup_word
+        return node.btype == BREAK_TOKEN \
+            and bool(prev_word) and bool(node.partial.lookup_word) \
+            and _is_cj_char(prev_word[-1]) \
+            and _is_cj_char(node.partial.lookup_word[0])
+
+    def get_cj_partial_penalty(self, trange: TokenRange) -> float:
+        penalty = self.nodes[trange.start].partial.penalty
+        for pos in range(trange.start + 1, trange.end):
+            if self.is_cj_continuation(pos):
+                penalty += PENALTY_CJ_CHAR
+            else:
+                node = self.nodes[pos]
+                penalty += node.partial.penalty + node.word_break_penalty
+        return penalty
 
     def iter_tokens_by_edge(self) -> Iterator[Tuple[int, int, Dict[TokenType, List[Token]]]]:
         """ Iterator over all tokens except partial ones grouped by edge.

@@ -9,6 +9,7 @@ Conversion from token assignment to an abstract DB search.
 """
 from typing import Optional, List, Tuple, Iterator, Dict
 import heapq
+import os
 
 from ..types import SearchDetails, DataLayer
 from . import query as qmod
@@ -306,7 +307,11 @@ class SearchBuilder:
                  for t in name_fulls]
         ranks.sort(key=lambda r: r.penalty)
         # Fallback, sum of penalty for partials
-        return dbf.FieldRanking(db_field, self.query.get_partial_penalty(trange) + 0.2, ranks)
+        if os.environ.get('NOMINATIM_CJK_PENALTY', 'off') == 'on':
+            penalty = self.query.get_cj_partial_penalty(trange)
+        else:
+            penalty = self.query.get_partial_penalty(trange)
+        return dbf.FieldRanking(db_field, penalty + 0.2, ranks)
 
     def get_addr_ranking(self, trange: qmod.TokenRange) -> dbf.FieldRanking:
         """ Create a list of ranking expressions for an address term
